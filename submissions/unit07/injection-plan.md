@@ -8,19 +8,24 @@
 
 ## Baseline steady state
 
-**No fault has been injected. Docker Desktop's Linux daemon is currently unavailable in this environment, so measured steady-state latency, success rate, and replica distribution are pending confirmation.**
+**Measured baseline, collected 2026-10-28 while all four services were healthy:**
 
-After Docker Desktop is running, the required baseline will be collected with:
+```text
+rows=100; 25 samples per endpoint
+/                         25/25 200; worst 0.118793 s; served by .11 13, .12 12
+/api/Products             25/25 200; worst 0.175213 s; served by .12 13, .11 12
+/rest/admin/application-configuration 25/25 200; worst 0.060204 s; served by .11 13, .12 12
+/edge-health              25/25 200; worst 0.011417 s
+```
+
+The baseline was collected with:
 
 ```bash
 cd labs/unit07
 ./probe.sh 30 > ../../submissions/unit07/results/probe-baseline.csv
 ```
 
-The plan will then be updated with:
-- steady-state 200 success rate for each endpoint,
-- worst observed latency,
-- normal `served_by` values, confirming that `/`, `/api/Products`, and `/rest/admin/application-configuration` alternate between `172.28.7.11` and `172.28.7.12` as measured.
+Normal upstream traffic alternated between `172.28.7.11:3000` and `172.28.7.12:3000` on the three application endpoints. `/edge-health` remained a local Nginx 200 and reported no upstream.
 
 ## Configuration basis
 
