@@ -1,0 +1,163 @@
+# Single source of truth for every tool version this course pins.
+# Lab specs and the README must agree with this file.
+#
+# Cadence: re-pin everything before each cohort (August, January). During a
+# semester a pin changes only when the current one is broken or wrong, and the
+# lab's Common pitfalls says so. A student on lab 7 must not find lab 4 changed
+# under them.
+#
+# `verified` records what was actually executed against the pin, and when.
+# "recorded" means the pin matches what a student installing today receives, but
+# the lab's own commands were not re-run against it.
+#
+# Check drift:  python3 tools/check-versions.py
+# Verify a lab: tools/verify-lab.sh 2 --run
+
+checked: 2026-09-06
+
+tools:
+  juice-shop:
+    pin: v20.0.0
+    labs: [1, 4, 5, 7, 8, 9, 10, 11]
+    github: juice-shop/juice-shop
+    docker: bkimminich/juice-shop
+    verified: 2026-09-05, lab 1 commands run end to end
+    hold: |
+      v20.2.0 is out and was checked on 2026-09-05: same /api/Products count (46),
+      same /rest/products 500, same missing headers, same health endpoint. It only
+      changes the challenge counts (112 -> 116 total, 13 -> 14 Injection) quoted in
+      Lecture 1. Not bumped because the cohort is on lab 1 with v20.0.0 right now.
+      Bump it with the lecture counts before the next cohort.
+
+  threagile:
+    pin: "0.9.1"
+    labs: [2]
+    github: Threagile/threagile
+    docker: threagile/threagile
+    verified: 2026-09-05, lab 2 commands run end to end; latest upstream release
+
+  gitleaks:
+    pin: v8.30.1
+    labs: [3]
+    github: gitleaks/gitleaks
+    verified: 2026-09-05, detects a planted AWS key on a no-git source tree
+
+  syft:
+    pin: v1.51.1
+    labs: [4]
+    github: anchore/syft
+    verified: >
+      2026-09-05 and 2026-09-06: SBOM of the pinned v20.0.0 image, 3069 CycloneDX
+      components and 909 SPDX packages (the 20.2.0 image gives 2677)
+    note: emits CycloneDX specVersion 1.7 by default; Cosign 3.0.2 attests it unchanged
+
+  grype:
+    pin: v0.118.0
+    labs: [4, 10]
+    github: anchore/grype
+    verified: 2026-09-05, scanned the Syft SBOM, 11 critical / 48 high
+
+  trivy:
+    pin: v0.74.0
+    labs: [4, 6, 7, 10]
+    github: aquasecurity/trivy
+    verified: 2026-09-05, image scan of Juice Shop, 50 critical+high
+
+  semgrep:
+    pin: "1.176.0"
+    labs: [5, 10]
+    github: semgrep/semgrep
+    verified: >
+      recorded. Lab 5 installs it with pip, which gives this release; the docker
+      `latest` tag trailed it by one patch on 2026-09-05
+
+  zap:
+    pin: v2.17.0
+    labs: [5, 10]
+    github: zaproxy/zaproxy
+    docker: ghcr.io/zaproxy/zaproxy
+    verified: recorded
+    hold: |
+      Labs run the floating `stable` docker tag, so students already get this. The
+      authenticated scan in lab 5 takes 5-10 minutes and has not been re-run against
+      2.17; do that before relying on the lab 5 numbers.
+
+  checkov:
+    pin: "3.3.16"
+    labs: [6, 10]
+    github: bridgecrewio/checkov
+    verified: >
+      2026-09-05, scanned the shipped terraform: still a JSON array of frameworks
+      (terraform + secrets), severity still null on the OSS build, 78 failed checks
+
+  kics:
+    pin: latest
+    labs: [6]
+    docker: checkmarx/kics
+    verified: recorded
+    hold: unpinned; pin it to a released tag before the next cohort
+
+  k3d:
+    pin: v5.9.0
+    labs: [7]
+    github: k3d-io/k3d
+    verified: recorded
+    hold: >
+      cluster creation and the lab 7 Pod Security Standards steps have not been
+      re-run against 5.9. Do that before the next cohort.
+
+  conftest:
+    pin: v0.69.0
+    labs: [7, 9]
+    github: open-policy-agent/conftest
+    verified: >
+      2026-09-05, shipped policies against both lab 9 manifests: hardened 30/30 pass,
+      unhardened 8 failures, as the lab states
+
+  cosign:
+    pin: v3.0.2
+    labs: [8]
+    github: sigstore/cosign
+    verified: >
+      2026-09-05, full lab 8 chain: key generation, sign and verify a digest in a
+      local registry, CycloneDX attestation and verify-attestation round trip
+    hold: |
+      Do not move to 3.1.x. It removed support for `--tlog-upload=false` and answers
+      with a `--signing-config` error, which breaks every signing command in lab 8.
+      Rewriting the lab for signing configs is the prerequisite for that bump.
+
+  falco:
+    pin: "0.43.1"
+    labs: [9]
+    github: falcosecurity/falco
+    verified: recorded
+    verified: >
+      2026-09-06 on a WSL2 kernel with BTF: both built-in detections fired, a
+      custom rule reloaded with SIGHUP fired, and an outbound-port rule fired on
+      a refused connection
+    hold: >
+      0.44.1 is out and needs the same run before the bump.
+
+  defectdojo:
+    pin: "2.58.3"
+    labs: [10]
+    github: DefectDojo/django-DefectDojo
+    verified: >
+      2026-09-06, full lab 10 run: stack up in release mode, product and
+      engagement created through the API, all seven parser names confirmed
+      present, and the shipped importer loading real Semgrep (26 findings) and
+      Checkov (80 findings) reports
+    hold: |
+      3.x is out. The lab clone is now pinned to 2.58.3 because 3.x renames
+      importer parsers, which is exactly what run-imports.sh depends on. The bump
+      needs another full lab 10 run against the new parser names.
+
+  kata:
+    pin: "4.1.0"
+    labs: [12]
+    github: kata-containers/kata-containers
+    verified: >
+      2026-09-06, release asset kata-static-4.1.0-amd64.tar.zst resolves and the
+      shipped installer is bash 3.2 clean. The on-host install itself (containerd
+      runtime registration, /opt/kata) was not executed: it modifies the machine
+      it runs on and needs /dev/kvm plus containerd rather than Docker alone.

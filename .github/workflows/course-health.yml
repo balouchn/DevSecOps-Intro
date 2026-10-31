@@ -1,0 +1,49 @@
+name: Course health
+
+# Weekly drift check on the pinned tool stack. It opens one issue when a pin has
+# fallen behind upstream; re-pinning happens before the next cohort, not on every
+# release. See tools/versions.yaml for the cadence.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check pinned versions against upstream
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 -m pip install --quiet pyyaml
+          # $? after a pipeline is tee's status, which is always 0. Capture the
+          # checker's own exit code instead, or the drift issue never opens.
+          set +e
+          python3 tools/check-versions.py > report.txt
+          drift=$?
+          set -e
+          cat report.txt
+          echo "drift=$drift" >> "$GITHUB_OUTPUT"
+      - name: Open or update the drift issue
+        if: steps.check.outputs.drift != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Tool pins have drifted"
+          body=$(printf 'Weekly check of `tools/versions.yaml`.\n\n```\n%s\n```\n\nRe-pin before the next cohort. A mid-semester bump needs a full lab re-run and a Common pitfalls line.' "$(cat report.txt)")
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label lab-bug
+          fi

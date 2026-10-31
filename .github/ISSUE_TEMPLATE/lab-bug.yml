@@ -1,0 +1,44 @@
+name: Lab bug
+description: A command, script or file in a lab does not work as written
+title: "lab N: <what breaks>"
+labels: ["lab-bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Reporting these is the fastest way to get a lab fixed for everyone. You are not
+        expected to work around a broken command on your own.
+  - type: input
+    id: lab
+    attributes:
+      label: Lab and step
+      placeholder: "lab 5, step 5.3"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: Copy it exactly as the lab prints it.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What happened
+      description: Error message or wrong output, pasted, not described.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS and tool version
+      placeholder: "macOS 15.5, Docker 28.1, bash 3.2"
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround you found, if any
