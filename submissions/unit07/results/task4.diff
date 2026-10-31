@@ -1,0 +1,13 @@
+﻿diff --git a/labs/unit07/edge/nginx.conf b/labs/unit07/edge/nginx.conf
+index d35a3f8..034a72e 100644
+--- a/labs/unit07/edge/nginx.conf
++++ b/labs/unit07/edge/nginx.conf
+@@ -31,7 +31,7 @@ http {
+       proxy_pass_request_body off;
+       proxy_set_header        Content-Length "";
+       proxy_connect_timeout   2s;
+-      proxy_read_timeout      10s;
++      proxy_read_timeout      2s;
+     }
+ 
+     location /api/  { auth_request /_auth; proxy_pass http://juice; }
