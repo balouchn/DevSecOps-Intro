@@ -2,7 +2,7 @@
 
 ## Student and environment
 
-- Student name: **[requires your name]**
+- Student name: **Noorulain Balouch**
 - Environment: **Docker Desktop on Windows (WSL 2)**
 - Scope: Only the Docker Compose project `u07`; the edge publishes only `127.0.0.1:8080`.
 

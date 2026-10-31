@@ -11,8 +11,8 @@
 ### Measured result
 
 - E1 stayed healthy for all endpoints: `532/532` requests were 200.
-- E2: `/api/Products` and `/rest/admin/application-configuration` failed with `500` while `/` and `/edge-health` stayed 200. The protected routes lost 108 of 532 requests.
-- E3: same protected endpoints failed again, but the failure pattern was slower, with worst latency near `10s` because the old timeout was `proxy_read_timeout 10s;`.
+- E2: in the renewed run `/api/Products` had 52 failures and `/rest/admin/application-configuration` had 53 failures with status 500; `/` and `/edge-health` stayed 200.
+- E3: both protected endpoints failed again. The renewed run had 50 failures for each endpoint, with worst measured protected-route latency near 2.012 seconds under the current 2-second auth timeout.
 - E2b: after the timeout change to 2s, the protected routes still failed when `idp` was stopped. The change reduced time-to-fail under a hung provider, but it did not restore service when the identity provider was unavailable.
 
 ## Finding: the gap between prediction and measurement

@@ -2,24 +2,27 @@
 
 ## Observed behavior -> control
 
-| Observed behaviour | Control that produced it | Layer | Depends on | Logged? | Independence verdict |
+| Observed behaviour | Exact control | Layer | Depends on | Logged? | Independence verdict |
 |---|---|---|---|---|---|
-| E1 stayed healthy after `juice-a` stopped | `upstream juice { server juice-a:3000 ...; server juice-b:3000 ...; }` plus `proxy_next_upstream error timeout http_502 http_503;` | Availability | Docker networking, the `juice` upstream, and the remaining replica | Yes, via access log and response `X-Served-By` | Not independent: both replica paths are on the same host, same Docker network, same failure mode (network/port availability) |
-| `/api/Products` and `/rest/admin/application-configuration` failed when `idp` stopped | `location /api/ { auth_request /_auth; ... }` and `location /rest/ { auth_request /_auth; ... }` | Authentication | IDP service `idp:8081/validate` and its network path | Yes, Nginx logs recorded the 500s | Not independent: both protected routes share the same auth dependency and the same operator (Nginx config) |
-| E3 became slow before failing | `proxy_read_timeout 10s;` on `location = /_auth` before Task 4 | Recovery / timeout | IDP reachability and request timing | Yes, probe response times reached ~10s | Not independent: same IDP dependency and same timeout policy; a single slow or hung identity provider stalls every protected route |
-| `/edge-health` stayed 200 even while protected routes failed | `location = /edge-health { access_log off; return 200 "edge ok\n"; }` | Detection / health | Only the local edge proxy | Yes, but it is intentionally a static health check | Not independent: it does not test the real upstream or IDP dependencies |
-| Localhost-only exposure prevented unrelated hosts from seeing the lab traffic | `ports: - "127.0.0.1:8080:80"` in `docker-compose.yml` | Boundary | Docker host network binding and OS loopback | Not directly; the bind itself is the control | It is independent of the app logic, but not independent of the host OS and container runtime |
+| E1 had 532/532 status-200 responses after Juice Shop replica A stopped | `upstream juice` lists both replicas in `nginx.conf`; `proxy_next_upstream error timeout http_502 http_503` is configured on the edge server | Availability | Docker network and remaining replica | Probe CSV and Nginx access log | Not independent: replicas share host, Docker network, and the same operator |
+| IDP stop/pause caused protected route failures | `auth_request /_auth` appears in both `location /api/` and `location /rest/`; `/_auth` proxies to `http://idp:8081/validate` | Authentication | IDP availability and Docker network | Probe CSV and Nginx error/access logs | Shared dependency: one IDP failure reaches both routes |
+| `/` remained 200 during IDP faults | `location / { proxy_pass http://juice; }` has no `auth_request` | Availability boundary | Juice replicas only | Probe CSV | Independent of IDP for that route, but not independent of Juice replicas |
+| `/edge-health` remained 200 during IDP faults | `location = /edge-health { return 200 "edge ok\n"; }` is a static response | Detection | Edge process only | Probe CSV; endpoint intentionally has access logging disabled | Not an independent dependency check |
+| Protected requests stalled near 2 seconds in the measured runs | `proxy_read_timeout 2s` under `location = /_auth` in the current Nginx configuration | Timeout recovery | IDP response time | Probe CSV and error log | Shared timeout policy controls both protected route families |
+| Lab traffic is limited to the host | `ports: - "127.0.0.1:8080:80"` in `docker-compose.yml` | Boundary/safety | Docker host loopback binding | Configuration | Independent of application failure mode, but controlled by host/Docker operator |
 
-## Which control made recovery slower or less safe than it needed to be?
+## Controls requiring attention
 
-The primary control was the original `/_auth` timeout: `proxy_read_timeout 10s;`. When `idp` was paused, Nginx held each protected request open for about ten seconds before failing it. That made a hung dependency look like a slow, noisy outage rather than a fast detect-and-fail event. The faster timeout change in Task 4 reduced that stall window to 2 seconds, but it did not eliminate the underlying outage when the dependency was unavailable.
+- The quickest shared recovery control to reduce a hung-auth wait is the 2-second `proxy_read_timeout`, changed from 10 seconds in Task 4.
+- This change improves fail-fast time but does not restore protected availability when IDP is stopped; E2b still had 108 protected-route failures out of all protected requests.
+- The static `/edge-health` control is unsafe as a broad service indicator: it can remain 200 while protected routes fail.
 
 ## Independence verdict
 
-I applied the three tests:
+Three tests do not support independence among the identity-protected controls:
 
-- Vendor: the edge, IDP, and both Juice Shop replicas are all in the same Docker Compose project and same Docker network, so they are not independent vendors in a system-of-systems sense.
-- Failure mode: the same host-and-network failure mode affects the upstream and auth control path at once.
-- Operator: the same operator (project configuration) controls the auth logic, timeout policy, and health check behavior.
+- Vendor: edge, IDP, and replicas are separate container images but belong to the same Compose project and shared host runtime.
+- Failure mode: IDP loss simultaneously crosses the same authentication control used by `/api/` and `/rest/`.
+- Operator: one lab compose file, one Nginx configuration, and one Docker network operator control the affected services.
 
-Conclusion: the relied-on controls are not independent. A single dependency failure in the shared IDP path can take down all authenticated routes at once.
+Therefore, `/api/` and `/rest/` are not independent protection paths. Public `/` and `/edge-health` also do not validate IDP availability.
